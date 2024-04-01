@@ -121,7 +121,6 @@ class SuumoSpider:
     def parse_detail_page(self, content: bytes) -> dict:
         content_text = content.decode()
         soup = BeautifulSoup(content, XML_PARSER)
-        # TODO parse all info here
         # Get GPS data
         gps = {
             "latitude": re.findall(
