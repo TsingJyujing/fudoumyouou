@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "domus-analytica"
+version = "0.1.0"
+description = "Analytica Pretiorum Domus Japoniae"
+authors = ["Yifan Yuan <nigel434@gmail.com>"]
+readme = "README.md"
+packages = [{include = "domus_analytica"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.31.0"
+beautifulsoup4 = "^4.12.3"
+pandas = "^2.2.1"
+click = "^8.1.7"
+pymongo = "^4.6.3"
+pydantic = "^2.6.4"
+pydantic-settings = "^2.2.1"
+
+[tool.poetry.group.dev.dependencies]
+jupyterlab = "^4.1.5"
+black = "^24.3.0"
+
+[tool.poetry.scripts]
+domus-analytica = "domus.cli:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
