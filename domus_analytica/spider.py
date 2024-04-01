@@ -122,39 +122,36 @@ class SuumoSpider:
         content_text = content.decode()
         soup = BeautifulSoup(content, XML_PARSER)
         # Get GPS data
-        gps = {
-            "latitude": re.findall(
-                ",initIdo?.*?([+-]?([0-9]*[.])?[0-9]+)", content_text
-            )[0][0],
-            "longitude": re.findall(
-                ",initKeido?.*?([+-]?([0-9]*[.])?[0-9]+)", content_text
-            )[0][0],
+        result = {
+            "nearby_places": [
+                {
+                    "type": nearby.find_all("div", attrs={"class": "bgGreen"})[
+                        0
+                    ].get_text(),
+                    "content": nearby.find_all("div", attrs={"class": "lh15"})[
+                        0
+                    ].get_text(),
+                }
+                for nearby in soup.find_all("li", attrs={"class": "cf dibz vat"})
+            ],
         }
-        nearby_places = [
-            {
-                "type": nearby.find_all("div", attrs={"class": "bgGreen"})[
-                    0
-                ].get_text(),
-                "content": nearby.find_all("div", attrs={"class": "lh15"})[
-                    0
-                ].get_text(),
-            }
-            for nearby in soup.find_all("li", attrs={"class": "cf dibz vat"})
-        ]
-        detail_table = soup.find(
-            "table", attrs={"class": "mt15 bdGrayT bdGrayL bgWhite pCell10 bdclps wf"}
-        )
         content_details = []
-        for th, td in zip(detail_table.find_all("th"), detail_table.find_all("td")):
-            type_div = th.find("div", attrs={"class": "fl"})
-            if type_div:
-                _type = type_div.get_text()
-            else:
-                _type = th.get_text()
-
-            content_details.append({"type": _type, "content": td.get_text().strip()})
-        return {
-            "gps": gps,
-            "nearby_places": nearby_places,
-            "content_details": content_details,
-        }
+        for detail_table in soup.find_all("table", attrs={"summary": "表"}):
+            for th, td in zip(detail_table.find_all("th"), detail_table.find_all("td")):
+                type_div = th.find("div", attrs={"class": "fl"})
+                if type_div:
+                    _type = type_div.get_text()
+                else:
+                    _type = th.get_text()
+                content_details.append(
+                    {"type": _type, "content": td.get_text().strip()}
+                )
+        result["content_details"] = content_details
+        lat_result = re.findall(",initIdo?.*?([+-]?([0-9]*[.])?[0-9]+)", content_text)
+        lon_result = re.findall(",initKeido?.*?([+-]?([0-9]*[.])?[0-9]+)", content_text)
+        if lat_result and lon_result:
+            result["gps"] = {
+                "latitude": lat_result[0][0],
+                "longitude": lon_result[0][0],
+            }
+        return result
