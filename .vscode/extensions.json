@@ -1,0 +1,20 @@
+{
+    "recommendations": [
+        "ms-python.vscode-pylance",
+        "ms-python.python",
+        "ms-python.isort",
+        "ms-python.flake8",
+        "ms-python.black-formatter",
+        "njpwerner.autodocstring",
+        "esbenp.prettier-vscode",
+        "tamasfe.even-better-toml",
+        "redhat.vscode-xml",
+        "redhat.vscode-yaml",
+        "Grafana.vscode-jsonnet",
+        "yzhang.markdown-all-in-one",
+        "ms-vscode.makefile-tools",
+        "Gruntfuggly.todo-tree",
+        "GrapeCity.gc-excelviewer",
+        "ms-toolsai.jupyter",
+    ]
+}
