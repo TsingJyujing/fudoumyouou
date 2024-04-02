@@ -60,3 +60,7 @@
 - [スクレイピングで不動産情報取得(SUUMO)(1)](https://qiita.com/kyokohama66/items/30aaacec0bb5c8bd7993)
 - [SUUMOの物件情報を自動取得（スクレイピング）したのでコードを解説する。](https://qiita.com/tomyu/items/a08d3180b7cbe63667c9)
 - [不動産！マンションマーケットから物件の情報をスクレイピング ](https://note.com/11210858628/n/nd7b69cf8530a)
+
+## 吐槽
+
+- 本来想计算坐电车去某一站的时间，但是Google Map的API居然不支持。 这就奇怪了，GoogleMap的APP里面明明是支持公交和电车的，为什么API不支持呢？唯一的可能性是，与Google合作的日本数据提供者在协议中限定了不许开放API：[In which countries are transit directions available? ](https://developers.google.com/maps/faq#transit_directions_countries)
