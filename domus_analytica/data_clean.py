@@ -18,6 +18,17 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
     domus_db = pymongo.MongoClient(config.mongo_uri).get_database(config.mongo_db_name)
     suumo_details = domus_db.get_collection("suumo_details")
 
+    mafia_points = [
+        GeoPoint.from_lat_lng(**doc["geometry"]["location"])
+        for doc in domus_db.get_collection("japan_mafia").find({}, {"geometry": 1})
+    ]
+    cemetery_points = [
+        GeoPoint.from_lat_lng(**doc["geometry"]["location"])
+        for doc in domus_db.get_collection("google_cemetery_related").find(
+            {}, {"geometry": 1}
+        )
+    ]
+
     table_data = []
 
     for doc in suumo_details.find(suumo_filter):
@@ -162,6 +173,13 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
                 ),
             ]:
                 result_doc[f"distance_to_{n}"] = this_location - p
+
+            result_doc["min_distance_to_mafia"] = min(
+                this_location - p for p in mafia_points
+            )
+            result_doc["min_distance_to_cemetery"] = min(
+                this_location - p for p in cemetery_points
+            )
 
         def get_monthly_fee(key):
             text = content_details[key]

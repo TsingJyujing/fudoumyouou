@@ -52,3 +52,7 @@ class GeoPoint(BaseModel):
         ) * math.cos(
             math.radians(point1.longitude - point2.longitude)
         )
+
+    @staticmethod
+    def from_lat_lng(**kwargs) -> "GeoPoint":
+        return GeoPoint(latitude=float(kwargs["lat"]), longitude=float(kwargs["lng"]))
