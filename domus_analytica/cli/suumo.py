@@ -12,13 +12,6 @@ from domus_analytica.spider import SuumoSpider, MongoDBPageCache
 log = logging.getLogger(__name__)
 
 
-@click.group()
-@click.option("--debug", "-v", is_flag=True, help="Print debug logs.")
-def app(debug: bool):
-    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
-
-
-@app.command("suumo", help="Download data from SUUMO")
 @click.option(
     "--search-url",
     required=True,

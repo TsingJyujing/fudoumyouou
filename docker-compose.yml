@@ -1,14 +1,16 @@
 version: "3"
 services:
   mongo:
-    image: "mongo:4"
+    image: "mongo:7"
     restart: always
     ports:
-      - 27017:27017
+      - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       # NOTE change to your password
       MONGO_INITDB_ROOT_PASSWORD: d6b04d544023
     command: "--wiredTigerCacheSizeGB 2.0"
     volumes:
-      - ./data/mongo:/data
+      - mongo:/data
+volumes:
+  mongo:
