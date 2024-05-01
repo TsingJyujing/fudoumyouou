@@ -34,6 +34,7 @@ properties2field = {
     default="domus",
     type=str,
     help="MongoDB database for saving data",
+    envvar="MONGO_DB_NAME",
 )
 @click.option(
     "--mongo-coll",
