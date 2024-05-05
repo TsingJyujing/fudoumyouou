@@ -1244,6 +1244,23 @@ MarkupSafe = ">=2.0"
 i18n = ["Babel (>=2.7)"]
 
 [[package]]
+name = "jismesh"
+version = "2.1.0"
+description = "Utilities for the Japanese regional grid system defined in Japanese Industrial Standards (JIS X 0410 地域メッシュ)."
+optional = false
+python-versions = "*"
+files = [
+    {file = "jismesh-2.1.0-py2.py3-none-any.whl", hash = "sha256:ed89918a8634c121eff29d4e74b6c2179f3fccfa498d60ea6e259683b8e2380a"},
+    {file = "jismesh-2.1.0.tar.gz", hash = "sha256:7dcc9be29caf8bc62edd3bb0a1ad1649d75721981c4edd7c92c334761f779526"},
+]
+
+[package.dependencies]
+numpy = ">=1.15"
+
+[package.extras]
+test = ["nose (>=1.3.7)"]
+
+[[package]]
 name = "joblib"
 version = "1.3.2"
 description = "Lightweight pipelining with Python functions"
@@ -3683,4 +3700,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "6ec957d3a9e70d62a0f544841c2ce9d433b7ade0325ad9e27a3a7896b84813b2"
+content-hash = "ed542c6c109d250e8a00764526210f98cc343b9527f0e35674f7ffb233772f8e"

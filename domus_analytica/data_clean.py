@@ -1,6 +1,7 @@
 import re
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 import pymongo
 
@@ -28,6 +29,7 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
             {}, {"geometry": 1}
         )
     ]
+    japan_gis_poi = domus_db.get_collection("japan_gis_poi")
 
     table_data = []
 
@@ -180,6 +182,69 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
             result_doc["min_distance_to_cemetery"] = min(
                 this_location - p for p in cemetery_points
             )
+
+            # find nearest station and passenger count
+            nearest_station = japan_gis_poi.find_one(
+                {
+                    "category": "station_passengers",
+                    "loc": {
+                        "$near": {
+                            "$geometry": {
+                                "type": "Point",
+                                "coordinates": [
+                                    this_location.longitude,
+                                    this_location.latitude,
+                                ],
+                            },
+                            "$maxDistance": 2000,
+                        }
+                    },
+                }
+            )
+            if nearest_station and "passengers_count_2021" in nearest_station["data"]:
+                station_location = GeoPoint(
+                    longitude=nearest_station["loc"]["coordinates"][0],
+                    latitude=nearest_station["loc"]["coordinates"][1],
+                )
+                result_doc["nearest_station_distance"] = (
+                    this_location - station_location
+                )
+                result_doc["nearest_station_passengers"] = nearest_station["data"][
+                    "passengers_count_2021"
+                ]
+                if (
+                    "passengers_count_2019" in nearest_station["data"]
+                    and nearest_station["data"]["passengers_count_2019"] > 0
+                ):
+                    result_doc["nearest_station_covid_ratio"] = (
+                        nearest_station["data"]["passengers_count_2021"]
+                        / nearest_station["data"]["passengers_count_2019"]
+                    )
+            # Estimate population density
+            population_raw = np.array(
+                [
+                    doc["total_population"]
+                    for doc in japan_gis_poi.find(
+                        {
+                            "category": "population",
+                            "loc": {
+                                "$near": {
+                                    "$geometry": {
+                                        "type": "Point",
+                                        "coordinates": [
+                                            this_location.longitude,
+                                            this_location.latitude,
+                                        ],
+                                    },
+                                    "$maxDistance": 1000,
+                                }
+                            },
+                        }
+                    )
+                ]
+            )
+            result_doc["population_estimation_mean"] = population_raw.mean()
+            result_doc["population_estimation_median"] = np.median(population_raw)
 
         def get_monthly_fee(key):
             text = content_details[key]
