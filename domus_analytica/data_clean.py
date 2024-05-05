@@ -140,7 +140,7 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
             "drugstore",
             "park",
             "cafe",
-            "bus_station",
+            # "bus_station",
             "primary_school",
         ]:
             if f"nearby_{t}" in doc:
@@ -202,12 +202,9 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
                 }
             )
             if nearest_station and "passengers_count_2021" in nearest_station["data"]:
-                station_location = GeoPoint(
-                    longitude=nearest_station["loc"]["coordinates"][0],
-                    latitude=nearest_station["loc"]["coordinates"][1],
-                )
                 result_doc["nearest_station_distance"] = (
-                    this_location - station_location
+                    this_location
+                    - GeoPoint.from_geo_json_object(nearest_station["loc"])
                 )
                 result_doc["nearest_station_passengers"] = nearest_station["data"][
                     "passengers_count_2021"
@@ -223,7 +220,7 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
             # Estimate population density
             population_raw = np.array(
                 [
-                    doc["total_population"]
+                    doc["data"]["total_population"]
                     for doc in japan_gis_poi.find(
                         {
                             "category": "population",
@@ -245,6 +242,40 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
             )
             result_doc["population_estimation_mean"] = population_raw.mean()
             result_doc["population_estimation_median"] = np.median(population_raw)
+            # Bus stops and routes
+            bus_stops = list(
+                japan_gis_poi.find(
+                    {
+                        "category": "bus_stop",
+                        "loc": {
+                            "$near": {
+                                "$geometry": {
+                                    "type": "Point",
+                                    "coordinates": [
+                                        this_location.longitude,
+                                        this_location.latitude,
+                                    ],
+                                },
+                                "$maxDistance": 1000,
+                            }
+                        },
+                    }
+                )
+            )
+
+            result_doc["bus_stops_distance_min"] = (
+                min(
+                    this_location - GeoPoint.from_geo_json_object(bus_stop["loc"])
+                    for bus_stop in bus_stops
+                )
+                if bus_stops
+                else None
+            )
+            result_doc["bus_stop_count"] = len(bus_stops)
+            result_doc["bus_route_count"] = sum(
+                sum(len(rs) for rs in bus_stop["data"]["routes"])
+                for bus_stop in bus_stops
+            )
 
         def get_monthly_fee(key):
             text = content_details[key]

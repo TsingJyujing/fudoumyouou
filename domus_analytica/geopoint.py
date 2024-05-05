@@ -56,3 +56,12 @@ class GeoPoint(BaseModel):
     @staticmethod
     def from_lat_lng(**kwargs) -> "GeoPoint":
         return GeoPoint(latitude=float(kwargs["lat"]), longitude=float(kwargs["lng"]))
+
+    @staticmethod
+    def from_geo_json_object(obj):
+        if obj["type"] != "Point":
+            raise ValueError(f"Object is not a point: {obj}")
+        return GeoPoint(
+            longitude=obj["coordinates"][0],
+            latitude=obj["coordinates"][1],
+        )

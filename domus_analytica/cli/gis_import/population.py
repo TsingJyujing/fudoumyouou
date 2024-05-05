@@ -2,13 +2,12 @@ import logging
 from pathlib import Path
 
 import click
-import geojson
+import jismesh.utils as ju
 import numpy as np
 import pandas as pd
 import pymongo
-from pymongo import MongoClient
-import jismesh.utils as ju
 from geojson import Point
+from pymongo import MongoClient
 
 log = logging.getLogger(__name__)
 FIELDS = [
@@ -112,23 +111,32 @@ def import_population_grid_data(
         ]
     )
     category = "population"
-    coll.delete_many({"category": category})
 
     def document_loader(file_path: Path):
-        df = pd.read_csv(file_path, encoding="cp932", skiprows=[1]).rename(
-            columns={r["field"]: r["unix_name"] for r in FIELDS}
+        df = (
+            pd.read_csv(file_path, encoding="cp932", skiprows=[1])
+            .rename(columns={r["field"]: r["unix_name"] for r in FIELDS})
+            .replace({np.nan: None, "*": None})
         )
-
+        number_fields = {x["unix_name"] for x in FIELDS}
         for _, row in df.iterrows():
-            data = row.to_dict()
-            data["category"] = category
             try:
-                lat, lng = ju.to_meshpoint(int(data["KEY_CODE"]), 0.5, 0.5)
+                lat, lng = ju.to_meshpoint(int(row["KEY_CODE"]), 0.5, 0.5)
+                yield {
+                    "loc": Point((lng, lat)),
+                    "category": category,
+                    "data": {
+                        k: (int(v) if k in number_fields and v is not None else v)
+                        for k, v in row.to_dict().items()
+                    },
+                }
             except ValueError as e:
+                log.error(f"failed to process GPS in row: {row}", exc_info=e)
                 raise e
-            data["loc"] = Point((lng, lat))
-            yield data
 
+    log.info("Cleaning expired data...")
+    rows_deleted = coll.delete_many({"category": category}).deleted_count
+    log.info(f"{rows_deleted} rows were deleted")
     for p in paths:
         log.info(f"Importing from file {p}")
         if not coll.insert_many(document_loader(p)).acknowledged:

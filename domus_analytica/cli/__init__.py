@@ -2,6 +2,7 @@ import logging
 
 import click
 
+from domus_analytica.cli.gis_import.bus_stop import import_bus_stops
 from domus_analytica.cli.gis_import.population import import_population_grid_data
 from domus_analytica.cli.gis_import.station_passengers import import_station_passengers
 from domus_analytica.cli.suumo import download_from_suumo
@@ -30,3 +31,4 @@ def gis_import():
 
 gis_import.command("station-passengers")(import_station_passengers)
 gis_import.command("population")(import_population_grid_data)
+gis_import.command("bus-stop")(import_bus_stops)
