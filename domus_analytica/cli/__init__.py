@@ -3,6 +3,8 @@ import logging
 import click
 
 from domus_analytica.cli.gis_import.bus_stop import import_bus_stops
+from domus_analytica.cli.gis_import.mafia import import_mafia
+from domus_analytica.cli.gis_import.poi_collector import import_google_poi
 from domus_analytica.cli.gis_import.population import import_population_grid_data
 from domus_analytica.cli.gis_import.station_passengers import import_station_passengers
 from domus_analytica.cli.suumo import download_from_suumo
@@ -32,3 +34,5 @@ def gis_import():
 gis_import.command("station-passengers")(import_station_passengers)
 gis_import.command("population")(import_population_grid_data)
 gis_import.command("bus-stop")(import_bus_stops)
+gis_import.command("google-poi")(import_google_poi)
+gis_import.command("mafia")(import_mafia)

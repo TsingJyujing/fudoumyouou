@@ -18,18 +18,26 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
     """
     domus_db = pymongo.MongoClient(config.mongo_uri).get_database(config.mongo_db_name)
     suumo_details = domus_db.get_collection("suumo_details")
-
-    mafia_points = [
-        GeoPoint.from_lat_lng(**doc["geometry"]["location"])
-        for doc in domus_db.get_collection("japan_mafia").find({}, {"geometry": 1})
-    ]
-    cemetery_points = [
-        GeoPoint.from_lat_lng(**doc["geometry"]["location"])
-        for doc in domus_db.get_collection("google_cemetery_related").find(
-            {}, {"geometry": 1}
-        )
-    ]
     japan_gis_poi = domus_db.get_collection("japan_gis_poi")
+
+    def build_poi_filter(
+        category: str, point: GeoPoint, max_distance: Optional[float] = None
+    ) -> dict:
+        _near = {
+            "$geometry": {
+                "type": "Point",
+                "coordinates": [
+                    point.longitude,
+                    point.latitude,
+                ],
+            },
+        }
+        if max_distance:
+            _near["$maxDistance"] = max_distance
+        return {
+            "category": category,
+            "loc": {"$near": _near},
+        }
 
     table_data = []
 
@@ -48,10 +56,6 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
         result_doc["name"] = content_details["物件名"]
         result_doc["address"] = content_details["住所"].split("\n")[0]
 
-        if "gps" in doc:
-            lat, lon = doc["gps"]["latitude"], doc["gps"]["longitude"]
-            result_doc["lat"] = lat
-            result_doc["lon"] = lon
         if "価格" in content_details:
             result_doc["price"] = float(
                 re.findall("([+-]?([0-9]*[.])?[0-9]+)万円", content_details["価格"])[0][
@@ -133,73 +137,31 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
             else:
                 result_doc["build_type"] = "unknown"
 
-        for t in [
-            "restaurant",
-            "supermarket",
-            "convenience_store",
-            "drugstore",
-            "park",
-            "cafe",
-            # "bus_station",
-            "primary_school",
-        ]:
-            if f"nearby_{t}" in doc:
-                result_doc[f"{t}_count"] = len(doc[f"nearby_{t}"]["results"])
-
         if "gps" in doc:
             # Nearest Station
             this_location = GeoPoint.parse_obj(doc["gps"])
-            if "nearby_train_station" in doc:
-                station_location = doc["nearby_train_station"]["results"][0][
-                    "geometry"
-                ]["location"]
-                result_doc["distance_to_nearest_station"] = (
-                    GeoPoint(
-                        latitude=station_location["lat"],
-                        longitude=station_location["lng"],
-                    )
-                    - this_location
-                )
-            for p, n in [
-                (
-                    GeoPoint(latitude=33.59118086094799, longitude=130.398581611983),
-                    "tenjin",
-                ),
-                (
-                    GeoPoint(latitude=33.5873955705478, longitude=130.41968891935684),
-                    "hakata",
-                ),
-                (
-                    GeoPoint(latitude=33.59030230439562, longitude=130.37888950301377),
-                    "ohori_park",
-                ),
-            ]:
-                result_doc[f"distance_to_{n}"] = this_location - p
 
-            result_doc["min_distance_to_mafia"] = min(
-                this_location - p for p in mafia_points
+            result_doc["min_distance_to_mafia"] = (
+                this_location
+                - GeoPoint.from_geo_json_object(
+                    japan_gis_poi.find_one(build_poi_filter("mafia", this_location))[
+                        "loc"
+                    ]
+                )
             )
-            result_doc["min_distance_to_cemetery"] = min(
-                this_location - p for p in cemetery_points
+
+            result_doc["min_distance_to_cemetery"] = (
+                this_location
+                - GeoPoint.from_geo_json_object(
+                    japan_gis_poi.find_one(
+                        build_poi_filter("google_cemetery", this_location)
+                    )["loc"]
+                )
             )
 
             # find nearest station and passenger count
             nearest_station = japan_gis_poi.find_one(
-                {
-                    "category": "station_passengers",
-                    "loc": {
-                        "$near": {
-                            "$geometry": {
-                                "type": "Point",
-                                "coordinates": [
-                                    this_location.longitude,
-                                    this_location.latitude,
-                                ],
-                            },
-                            "$maxDistance": 2000,
-                        }
-                    },
-                }
+                build_poi_filter("station_passengers", this_location, 2000)
             )
             if nearest_station and "passengers_count_2021" in nearest_station["data"]:
                 result_doc["nearest_station_distance"] = (
@@ -222,21 +184,7 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
                 [
                     doc["data"]["total_population"]
                     for doc in japan_gis_poi.find(
-                        {
-                            "category": "population",
-                            "loc": {
-                                "$near": {
-                                    "$geometry": {
-                                        "type": "Point",
-                                        "coordinates": [
-                                            this_location.longitude,
-                                            this_location.latitude,
-                                        ],
-                                    },
-                                    "$maxDistance": 1000,
-                                }
-                            },
-                        }
+                        build_poi_filter("population", this_location, 1000)
                     )
                 ]
             )
@@ -244,23 +192,7 @@ def extract_info_to_table(config: DomusSettings, suumo_filter: dict) -> pd.DataF
             result_doc["population_estimation_median"] = np.median(population_raw)
             # Bus stops and routes
             bus_stops = list(
-                japan_gis_poi.find(
-                    {
-                        "category": "bus_stop",
-                        "loc": {
-                            "$near": {
-                                "$geometry": {
-                                    "type": "Point",
-                                    "coordinates": [
-                                        this_location.longitude,
-                                        this_location.latitude,
-                                    ],
-                                },
-                                "$maxDistance": 1000,
-                            }
-                        },
-                    }
-                )
+                japan_gis_poi.find(build_poi_filter("bus_stop", this_location, 1000))
             )
 
             result_doc["bus_stops_distance_min"] = (

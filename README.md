@@ -1,61 +1,80 @@
-# Domus Analytica
+# FuDouMyouOu　不動明王
 
-日本房价分析程序
+GISデータを用いて不動産定価モデル
 
-## 设计
+## To Developers
 
-在日本购房与别处（比如中国）是不同的。国内购房，讲究个学区地段小区，随后有按照面积的单价。除非急售，房屋的成交总价大致总不会偏移单价乘以面积过远。
-在日本看了些时日（主要还是在SUUMO上）的房子，这里的定价逻辑与国内不同，地段重要，但是重要的是便利程度而非学区，离电车站近的价格更好。
-除此之外，房子的年限也是重中之重，新房和老房是截然不同两种价格，相比之下，面积倒没那么重要。同样地段的20年的老房子的价值可能只有新房子的50%～60%。
-2000万可能还不够买一个较繁华地段的一室一厅，但是到偏远些的地方可能买个四室一厅还有余。
+### Environment preparing
 
-本项目用回归对房价数据进行建模分析，以期对购房中我所关注的因素进行量化，来更好的作出决策。
+Please prepare these environment variables before starting:
 
-本程序针对以下指标进行分析：
+```dotenv
+# Change to the DB URI you're using
+# You can use docker-compose up to start one if you don't have it.
+MONGO_URI=mongodb://admin:d6b04d544023@127.0.0.1:27017/
+MONGO_DB_NAME=domus
+# Leave them empty or xxxx if you don't need it
+google_api_key=xxxx
+REINFOLIB_API_KEY=xxxx
+```
 
-1. 年限（築年月）
-2. 房型（間取り）
-3. 楼层（所在階/構造・階建）
-4. 朝向（向き）
-5. 面积（専有面積）
-6. 宠物（ペット相談）
+Please also prepare a `.env.local` for loading it from Jupyter Notebook.
 
-还有一个比较抽象的指标：方便程度，需要拆解为以下可量化的变量：
-1. 最近的车站的距离
-2. 坐车/开车到公司的时间
-3. 到最近的超市的距离
-4. 到最近的便利店的距离
-5. 到最近的邮局的距离
-6. ...
+Also, we're using poetry for env management, please run `poetry install` to install dependencies.
 
-还有一些玄学指标：
-1. 到最近坟场的距离
+### Download Data from SUUMO
 
-回归的目标是
+```shell
+domus-analytica suumo --detailed \
+  --search-url "https://suumo.jp/jj/bukken/ichiran/JJ010FJ001/?ar=090&bs=011&ta=40&jspIdFlg=patternShikugun&sc=40131&sc=40132&sc=40133&sc=40134&sc=40135&sc=40136&sc=40137&kb=500&kt=8000&mb=40&mt=9999999&md=2&md=3&md=4&ekTjCd=&ekTjNm=&tj=0&cnb=0&cn=25&srch_navi=1"
+```
 
-1. 価格
-2. ~~修繕積立金+管理費+修繕積立基金+諸費用~~
+About the search URL, please search on SUUMO and copy the link.
 
-## 具体实现
+### Download Data from 不動産情報ライブラリ
 
-### 数据收集
+Run: `domus-analytica import-trading-api`
 
-房价的数据从SUUMO上收集，使用Google Map的API进行后处理。
+You need to apply for a new API Key: https://www.reinfolib.mlit.go.jp/api/request/
 
-除了上述要分析的数据，还需要存储：
-1. 该物件的GPS和大致的地址信息
-2. 物件名（作为标识）
-3. 信息更新日期
+### Import GIS data to MongoDB
 
-为了避免对SUUMO网站造成影响，需要设定爬虫的间隔为正常浏览的间隔，同时，使用筛选条件尽可能减少需要下载的物件。
-筛选条件的定义方法是：排除自己一定不会购买的住宅（例如小于40平米/1LDK/价格离谱），排除数据之后对分析的科学性会有所损失，但是足够我使用了。
-（如果SUUMO看到这个项目：如果有机会我希望和SUUMO合作，希望可以构建出一个靠谱的房价定价模型）
+#### Bus Stops
 
-### 分析方法
+Please download all data from here and decompress: https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-P11-2022.html
 
+After downloaded all data, extract them in to on dir and run: `domus-analytica gis-import bus-stop --file data/path/dir`
 
-## 附录
+#### Population
 
+Please download all data from here: https://www.e-stat.go.jp/gis/statmap-search?page=1&type=1&toukeiCode=00200521&toukeiYear=2020&aggregateUnit=Q&serveyId=Q002005112020&statsId=T001142&datum=2011
+
+You can extract download link with this script:
+
+```javascript
+console.log(
+    Array(...document.getElementsByClassName("stat-dl_icon stat-statistics-table_icon"))
+        .map((x) => x.getAttribute("href"))
+        .map((s) => `${window.location.origin}${s}`)
+        .join("\n")
+)
+```
+
+After downloaded all data, extract them in to on dir and run: `domus-analytica gis-import population --file data/path/dir`
+
+#### Station Passengers
+
+Please download all data from here and decompress: https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-S12-2021.html
+After downloaded all data, extract them in to on dir and run: `domus-analytica gis-import station-passengers --file data/path/to/geojson/file`
+
+## Appendix
+
+### Data Source
+
+- [国土数値情報ダウンロードサイト](https://nlftp.mlit.go.jp/)
+- [不動産価格（取引価格・成約価格）情報の検索・ダウンロード](https://www.reinfolib.mlit.go.jp/realEstatePrices/)
+
+### References
 - [マンションマーケット](https://mansion-market.com/)
 - [SUUMO(スーモ)](https://suumo.jp/)
 - [スクレイピングで不動産情報取得(SUUMO)(1)](https://qiita.com/kyokohama66/items/30aaacec0bb5c8bd7993)
@@ -63,12 +82,4 @@
 - [不動産！マンションマーケットから物件の情報をスクレイピング ](https://note.com/11210858628/n/nd7b69cf8530a)
 
 
-### 数据源
 
-- 日本GIS数据：[国土数値情報ダウンロードサイト](https://nlftp.mlit.go.jp/)
-- 日本不动产交易数据：[不動産価格（取引価格・成約価格）情報の検索・ダウンロード](https://www.reinfolib.mlit.go.jp/realEstatePrices/)
-
-## 吐槽
-
-- 本来想计算坐电车去某一站的时间，但是Google Map的API居然不支持。 这就奇怪了，GoogleMap的APP里面明明是支持公交和电车的，为什么API不支持呢？唯一的可能性是，与Google合作的日本数据提供者在协议中限定了不许开放API：[In which countries are transit directions available? ](https://developers.google.com/maps/faq#transit_directions_countries)
-- 国土交通省公开了不少有用的数据，感觉税金花出去也不算全打了水漂（不是
